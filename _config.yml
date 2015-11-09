@@ -1,0 +1,9 @@
+title: "create :: Code → Art "
+description: > # this means to ignore newlines until "baseurl:"
+  Haskell Ruby FP Git Emacs
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "http://yourdomain.com" # the base hostname & protocol for your site
+github_username:  matsumonkie
+
+# Build settings
+markdown: kramdown
