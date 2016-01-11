@@ -1,15 +1,104 @@
 ---
 layout: post
-title:  "Some Monad applications"
+title:  "Functor/Applicative/Monad/Monoid memo"
 date:   2015-11-09 16:26:35 +0100
-categories: haskell monad
+categories: haskell
 ---
 
+# FUNCTOR
+
+> Apply f to a value wrapped in a context
+
+## class
+
 {% highlight haskell %}
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b -- or infix <$>
 {% endhighlight %}
 
-Check out the [Jekyll docs][jekyll-docs] for more info on how to get the most out of Jekyll. File all bugs/feature requests at [Jekyll’s GitHub repo][jekyll-gh]. If you have questions, you can ask them on [Jekyll Talk][jekyll-talk].
+## Maybe instance
 
-[jekyll-docs]: http://jekyllrb.com/docs/home
-[jekyll-gh]:   https://github.com/jekyll/jekyll
-[jekyll-talk]: https://talk.jekyllrb.com/
+{% highlight haskell %}
+instance Functor Maybe where
+  fmap f (Just x) = Just (f x)
+  fmap f Nothing = Nothing
+{% endhighlight %}
+
+## Exemple
+
+{% highlight haskell %}
+  fmap (+3) (Just 1) -- (+3) <$> Just 1
+{% endhighlight %}
+
+## Functions are Functor too
+
+{% highlight haskell %}
+instance Functor ((->) r) where
+  fmap f g = f . g  -- fmap on functions are just compositions
+
+-- which means you can do
+fmap (+3) (+5) 1 -- 9
+{% endhighlight %}
+
+# APPLICATIVE
+
+> Functor++ (functions wrapped in a context like Just(+3))
+
+## class
+{% highlight haskell %}
+class (Functor f) => Applicative f where
+  pure :: a -> f a
+  (<*>) :: f (a -> b) -> f a -> f b
+{% endhighlight %}
+
+## Maybe instance
+{% highlight haskell %}
+instance Applicative Maybe where
+  pure = Just
+  Nothing <*> _ = Nothing
+  (Just f) <*> foo = fmap f foo
+
+Just (+3) <*> Just 2 -- Just 5
+{% endhighlight %}
+
+# MONAD
+
+> Apply f (with f :: a -> m b) to a value wrapped in a context and return a new context
+
+## class
+
+{% highlight haskell %}
+class Control.Monad m where
+  return :: a -> m a
+  (>>=) :: m a -> (a -> m b) -> m b
+  (>>) :: m a -> m b -> m b
+  x >> y = x >>= \_ -> y
+{% endhighlight %}
+
+## Maybe instance
+{% highlight haskell %}
+instance Monad Maybe where
+  return x = Just x
+  Nothing  >>= _ = Nothing
+  Just x >>= f = f x
+
+big x =
+  if x > 10 then
+    Just x
+  else
+    Nothing
+
+big 30 -- Just 30
+big (Just 1) -- doesnt work
+Just 10 >>= big -- Just 10
+{% endhighlight %}
+
+# MONOID
+
+## class
+
+{% highlight haskell %}
+class Data.Monoid m where
+  mempty :: m
+  mappend :: m -> m -> m
+{% endhighlight %}
