@@ -77,6 +77,9 @@ class Control.Monad m where
   (>>=) :: m a -> (a -> m b) -> m b
   (>>) :: m a -> m b -> m b
   x >> y = x >>= \_ -> y
+  (>=>) :: Monad m => (a -> m b) -> (b -> m c) -> a -> m c -- usefull to compose monad
+  f >=> g  = \x -> f x >>= g
+
 {% endhighlight %}
 
 **Maybe instance**
@@ -87,14 +90,15 @@ instance Monad Maybe where
   Just x >>= f = f x
 
 big x =
-  if x > 10 then
-    Just x
+  if x >= 10 then
+    Just x + 1
   else
     Nothing
 
 big 30 -- Just 30
 big (Just 1) -- doesnt work
 Just 10 >>= big -- Just 10
+Just 10 >>= (big >=> big >=> big) -- Just 13
 {% endhighlight %}
 
 # MONOID
