@@ -65,3 +65,66 @@ run2 = do
   -- WriterT (Identity (0,["engine on","set speed at: 10","accelerating at: 100","engine off","what?"]))
 
 {% endhighlight %}
+
+# Reader
+
+---
+<br>
+
+> Useful to implicitely pass an environement through multiple functions
+
+**Monad Reader typeclass**
+
+{% highlight haskell %}
+newtype Reader r a = Reader { runReader :: r -> a }
+
+instance Monad (Reader r) where
+  return a = Reader $ \_ -> a
+  m >>= k = Reader $ \r -> runReader (k $ runReader m r) r
+
+reader :: Reader r m => (r -> a) -> m a
+
+asks :: (r -> a) -> Reader r a
+asks f = Reader f
+
+ask :: Reader a a
+ask = Reader id
+{% endhighlight %}
+
+**Simple example**
+
+{% highlight haskell %}
+import Control.Monad.Reader
+import Data.Maybe
+import Data.Map as Map
+
+type Config = Map String String
+
+serverConf = Map.fromList [
+  ("domain", "localhost"),
+  ("port", "8888"),
+  ("protocol", "http")
+  ] :: Config
+
+url :: Reader Config String
+url = do
+  domain <- asks (fetch "domain")
+  port <- asks (fetch "port")
+  -- here you call buildProtocol but you don't pass
+  -- it the environment it is done implicitely ! :-)
+  protocol <- buildProtocol
+  return (protocol ++ domain ++ ":" ++ port)
+
+buildProtocol :: Reader Config String
+buildProtocol = do
+  protocol <- asks (fetch "protocol")
+  return (protocol ++ "://")
+
+fetch :: String -> Config -> String
+fetch key conf =
+  fromJust $ Map.lookup key conf
+
+main = do
+  putStrLn $ runReader url serverConf -- http://localhost:8888
+
+{% endhighlight %}
