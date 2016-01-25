@@ -44,7 +44,7 @@ instance Functor ((->) r) where
 -- which means you can do
 fmap (+3) (+5) 1 -- 9
 
-((+) <$> (*5)) x y -- means f (g x) -> (5 * x) + y
+((+) <$> (*5)) x y -- means f (g x) y -> (5 * x) + y
 
 {% endhighlight %}
 
