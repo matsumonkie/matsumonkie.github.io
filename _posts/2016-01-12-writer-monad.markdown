@@ -20,10 +20,13 @@ instance (Monoid w) => Monad (Writer w) where
   (Writer (x, v)) >>= f =
     let (Writer (y, v')) = f x
     in Writer (y, v `mappend` v')
+
 {% endhighlight %}
 
 **Example with Strings**
 {% highlight haskell %}
+import Control.Monad.Writer
+
 type MyWriter = Writer [String] Int
 
 createWriter :: Int -> String -> MyWriter
@@ -43,15 +46,20 @@ engineOn = createWriter 1 "engine on"
 
 engineOff :: MyWriter
 engineOff = createWriter 0 "engine off"
+{% endhighlight %}
 
+Which can be called like this:
+
+{% highlight haskell %}
 run :: MyWriter
 run =
   engineOn >>
-  setSpeed 10 >>=
-  accelerate 10 >>
+  setSpeed 10 >>= \currentSpeed ->
+  tell ["test"] >>
+  accelerate 10 currentSpeed >>
   engineOff >>=
   \x -> writer ((x+1) * 10000, ["car bug?"])
-  -- WriterT (Identity (10000,["engine on","set speed at: 10","accelerating at: 100","engine off","car bug?"]))
+  -- WriterT (Identity (10000,["engine on","set speed at: 10","test","accelerating at: 100","engine off","car bug?"]))
 
 -- with do notation it's prettier but less understandable IMO
 run2 :: MyWriter
