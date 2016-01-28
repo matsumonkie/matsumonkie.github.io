@@ -64,10 +64,11 @@ multiplyAndAdd = do
 multiplyAndAdd 3 -- 20
 {% endhighlight %}
 
-This brings us to the Reader Monad which does exactly the same thing with some aditional useful functions
+Which brings us to the Reader Monad which does exactly the same thing with some aditional useful functions
 
 **Monad Reader typeclass**
 
+This is the Reader implementation:
 {% highlight haskell %}
 newtype Reader r a = Reader { runReader :: r -> a }
 
@@ -86,9 +87,9 @@ ask = Reader id
 
 **Simple example**
 
+Let's try to create a url from the general configuration below:
+
 {% highlight haskell %}
-import Control.Monad.Reader
-import Data.Maybe
 import Data.Map as Map
 
 type Config = Map String String
@@ -98,13 +99,30 @@ serverConf = Map.fromList [
   ("port", "8888"),
   ("protocol", "http")
   ] :: Config
+{% endhighlight %}
+
+The main idea is to fetch the domain, port and protocol and build the String http://localhost:8888
+With the Reader Monad, it can be done like this:
+
+{% highlight haskell %}
+import Control.Monad.Reader
+import Data.Maybe
 
 url :: Reader Config String
 url = do
   domain <- asks (fetch "domain")
   port <- asks (fetch "port")
-  -- here you call buildProtocol but you don't pass it the environment it is done implicitely ! :-)
+  -- here you call buildProtocol but you don't pass
+  -- it the environment it is done implicitely ! :-)
   protocol <- buildProtocol
+  return (protocol ++ domain ++ ":" ++ port)
+
+-- here is another version without do notation
+url2 :: Reader Config String
+url2 =
+  asks (fetch "domain") >>= \domain ->
+  asks (fetch "port") >>= \port ->
+  buildProtocol >>= \protocol ->
   return (protocol ++ domain ++ ":" ++ port)
 
 buildProtocol :: Reader Config String
@@ -116,7 +134,42 @@ fetch :: String -> Config -> String
 fetch key conf =
   fromJust $ Map.lookup key conf
 
+{% endhighlight %}
+
+We can then call the whole solution with the associated environment
+
+{% highlight haskell %}
 main = do
   putStrLn $ runReader url serverConf -- http://localhost:8888
+{% endhighlight %}
+
+**Simplification**
+
+In our previous example, we had to call `asks (fetch "something")` every time, we can do better
+
+{% highlight haskell %}
+-- asks take a function a apply a reader to it, let's
+-- make our own so we don't have to call asks everytime
+asks :: (r -> a) -> Reader r a
+asks f = Reader f
+
+-- we use ask to get the environement and we call our fetch method on it
+fromEnv :: String -> Reader Config String
+fromEnv key = do
+  env <- ask
+  return (fetch key env)
+
+-- now we can fetch more easily
+url :: Reader Config String
+url = do
+  domain <- fromEnv "domain"
+  port <- fromEnv "port"
+  protocol <- buildProtocol
+  return (protocol ++ domain ++ ":" ++ port)
+
+buildProtocol :: Reader Config String
+buildProtocol = do
+  protocol <- fromEnv "protocol"
+  return (protocol ++ "://")
 
 {% endhighlight %}
