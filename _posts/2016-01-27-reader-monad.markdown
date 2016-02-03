@@ -10,7 +10,7 @@ categories: haskell reader monad
 ---
 <br>
 
-> Useful to implicitely pass an environement through multiple functions
+> Useful to implicitely pass a read only environement through multiple functions
 
 Before going straight to the reader, we need to understand (-> r) instance of Monad
 
