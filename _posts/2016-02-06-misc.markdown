@@ -10,29 +10,43 @@ categories: misc recursive structure
 ---
 <br>
 
-I was having fun with some simple recursive data structure and started to wonder how I could parse it.
-Then I came across this lovely solution that consists in wrapping our structure in an array and parse it like it is a stack.
-
+Say you have this simple recursive structure.
 {% highlight haskell %}
 import Data.Monoid
 
--- so we have this simple recursive tree
 data Tree a = Node (Tree a, Tree a)
             | Leaf a
-              deriving (Show)
+            deriving (Show)
 
 tree = Node (Leaf 1, Node (Leaf 2, Leaf 3)) :: Tree Int
 
--- this function is what's interesting
+{% endhighlight %}
+
+One basic way to parse it would simply be to pattern match it like this:
+
+{% highlight haskell %}
+parse :: (Monoid b) => (Tree a -> b) -> Tree a -> b
+parse f tree = case tree of
+  (Node (l, r)) -> parse f l <> parse f r
+  leaf@(Leaf l) -> f leaf
+{% endhighlight %}
+
+One other way would consists in wrapping our structure in an array and parse its elements.
+
+{% highlight haskell %}
 parse :: (Monoid b) => (Tree a -> b) -> Tree a -> b
 parse f tree =
-  transform [tree] -- here we wrap tree in an array, so we can parse each of its element like a stack :-)
+  transform [tree] -- here we wrap tree in an array
   where transform [] = mempty
         transform (x:xs) = case x of
           Node (left, right) ->
             transform([left]) <> transform([right]) <> transform(xs)
           Leaf leaf -> f x
+{% endhighlight %}
 
+
+
+{% highlight haskell %}
 showLeaf :: (Show a) => Tree a -> String
 showLeaf (Leaf leaf) =  "(" ++ (show leaf) ++ ")"
 showLeaf _ = ""
