@@ -98,15 +98,13 @@ Here comes a first implementation of the State with our example:
 {% highlight haskell %}
 run :: Int -> State Int Int
 run initialSpeed =
-  let initState = return (initialSpeed)
-  in
-    initState >>=
-    acc 10 >>=
-    acc 10 >>=
-    acc (-2)
+  return (initialSpeed) >>=
+  acc 10 >>= -- this works the same as acc 10 >>= \x -> acc 10 x
+  acc 10 >>=
+  acc (-2)
 
--- with do notation we can see that >>= is different than a <- ...
--- cause a <- someState will assign the value to a without the state
+-- with do notation we can see that >>= is here shorter than with the <- notation
+-- cause >>= will all the new speed implicitely to the acc call
 run2 :: Int -> State Int Int
 run2 initialSpeed = do
   return (initialSpeed)
