@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Reader Monad"
-date:   2015-11-09 16:26:35 +0100
+date:   2015-11-02
 categories: haskell reader monad
 ---
 

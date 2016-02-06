@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Miscellaneous haskell tricks"
-date:   2016-02-6 16:26:35 +0100
+date:   2016-02-06
 categories: misc recursive structure
 ---
 

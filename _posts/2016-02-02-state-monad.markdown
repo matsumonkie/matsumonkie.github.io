@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "State Monad"
-date:   2015-11-09 16:26:35 +0100
+date:   2015-11-09
 categories: haskell state monad
 ---
 
