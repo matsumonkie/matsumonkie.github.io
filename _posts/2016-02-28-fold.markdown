@@ -1,0 +1,57 @@
+---
+layout: post
+title:  "Foldl Foldr Fold'"
+date:   2016-02-28
+categories: fold foldl foldr fold'
+---
+
+# Implementations
+
+---
+<br>
+
+There are two ways to fold a foldable structure in Haskell, from the left or from the right.
+
+{% highlight haskell %}
+foldLeft :: (a -> b -> a) -> a -> [b] -> a
+foldLeft step acc (x:xs) = foldLeft step (step acc x) xs
+foldLeft step acc []     = acc
+
+foldRight :: (b -> a -> a) -> a -> [b] -> a
+foldRight step acc (x:xs) = step x (foldRight step acc xs)
+foldRight step acc []     = acc
+{% endhighlight %}
+
+Which differs in the execution as seen below:
+
+{% highlight haskell %}
+  foldLeft  (+) 0 [1, 2, 3] -- (((0 + 1) + 2) + 3) = 6
+  foldRight (+) 0 [1, 2, 3] -- (1 + (2 + (3 + 0))) = 6
+
+  foldLeft  (-) 0 [1, 2, 3] -- (((0 - 1) - 2) - 3) = -6
+  foldRight (-) 0 [1, 2, 3] -- (1 - (2 - (3 - 0))) = 2
+{% endhighlight %}
+
+But there is one big drawback with folding in haskell that can cause your program to
+be slow and eventually run out of memory, Laziness. Laziness in Haskell is awesome but
+when folding, a step will never be calculated until every other step is done. So this
+might crash your computer:
+
+{% highlight haskell %}
+foldLeft (+) 0 [1..100000000] -- (((0 + 1) + 2) + 3) + ....)
+-- 0 + 1 will not be calculated until we get to the last steps so this introduce an overhead for every call of foldLeft
+-- same as (0 + 1) + 2...
+{% endhighlight %}
+
+In order to fix this issue, we can bypass haskell laziness with `seq`. Seq aims to run an operation immediately, wich means,
+instead of going `(0 + 1) + ...` We can now do `1 + ...`
+Here is the implementation of `FoldLeft'`:
+{% highlight haskell %}
+foldLeft' :: (a -> b -> a) -> a -> [b] -> a
+foldLeft' step acc (x:xs) =
+  let acc' = step acc x
+  in seq acc' $ foldLeft' step acc' xs
+foldLeft' step acc [] = acc
+{% endhighlight %}
+
+`FoldLeft'` uses seq so the current step gets strictly calculated.
