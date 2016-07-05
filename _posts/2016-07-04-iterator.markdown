@@ -1,0 +1,172 @@
+---
+layout: post
+title:  "Enhanced filtering"
+date:   2016-07-04
+categories: filter monad iterator
+---
+
+You have been given the following values:
+
+{% highlight haskell %}
+users :: [User]
+users = [ user1, user2, user3, user4, user5, user6 ]
+  where
+    user1 = User { name = "James",   age = 10, sex = Male,   job = Dancer,  dead = True  }
+    user2 = User { name = "Joe",     age = 20, sex = Male,   job = Teacher, dead = False }
+    user3 = User { name = "Marie",   age = 30, sex = Female, job = Writer,  dead = False }
+    user4 = User { name = "Marylin", age = 80, sex = Female, job = Writer,  dead = True }
+    user5 = User { name = "Jack",    age = 40, sex = Male,   job = Reader,  dead = False }
+    user6 = User { name = "Bob",     age = 40, sex = Male,   job = Teacher, dead = False }
+{% endhighlight %}
+
+Which related structures is defined with:
+
+{% highlight haskell %}
+data User = User {
+  name :: String,
+  age :: Int,
+  sex :: Sex,
+  job :: Job,
+  dead :: Bool
+}
+data Sex = Male | Female deriving Eq
+data Job = Dancer | Teacher | Writer | Reader deriving Eq
+{% endhighlight %}
+
+Plus, you also already have predicates:
+
+{% highlight haskell %}
+-- let's define some predicate
+isAlive :: User -> Bool
+isAlive = (== False) . dead
+isDead = not . isAlive
+
+isAdult :: User -> Bool
+isAdult = (>18) . age
+isChild = not . isAdult
+
+isFemale :: User -> Bool
+isFemale = (== Female) . sex
+isMale = not . isFemale
+
+isWriter :: User -> Bool
+isWriter = (== Writer) . job
+
+isTeacher :: User -> Bool
+isTeacher = (== Teacher) . job
+
+isReader :: User -> Bool
+isReader = (== Reader) . job
+{% endhighlight %}
+
+You want a way to filter/fold this user list with your predicates.
+You could do just `filter predicate users` or `foldl f a users`.
+But you want to easily be able to combine your filters and foldings.
+For instance, you want to only keep the Dancers and Writers and a maximum of 2 females
+
+**Applicative & Functor**
+---
+
+One possibility would be to lift your predicates:
+
+{% highlight haskell %}
+import Control.Applicative
+
+andAlso = liftA2 (&&)
+orElse  = liftA2 (||)
+
+deadFemaleArtist :: User -> Bool
+deadFemaleArtist = artist `andAlso` deadFemale
+  where
+    deadFemale = isFemale `andAlso` isDead -- equivalent to (&&) <$> isFemale <*> isDead
+    artist = isWriter `orElse` isReader
+
+putStrLn $ show $ filter deadFemaleArtist users -- ["Marylin"]
+{% endhighlight %}
+
+This is nice, we've just define a small DSL. Unfortunately, we haven't solved the folding issue...
+
+**Monad & Iterator**
+---
+
+What we would really like is to be able to define functions that can either fold or filter.
+We can define a structure for that.
+
+{% highlight haskell %}
+data Iterator a = Continue a | Skip | Stop
+{% endhighlight %}
+
+Ideally, we would like to do something like that
+
+{% highlight haskell %}
+keep (noWomen . onlyAdult . (maxNumberMan 3)) users []
+{% endhighlight %}
+
+The Monad typeclass define the operator `>=>` which is really helpfull to compose monad:
+
+{% highlight haskell %}
+(>=>) :: Monad m => (a -> m b) -> (b -> m c) -> a -> m c
+f >=> g  = \x -> f x >>= g
+{% endhighlight %}
+
+We are going to take advantage of it. Let's define our small filtering/folding functions:
+
+{% highlight haskell %}
+type Iterate a = (a, [a]) -> Iterator (a, [a])
+
+noWomen :: Iterate User
+noWomen x@(user, users)
+  | sex user == Female
+    = Skip
+  | otherwise
+    = Continue x
+
+onlyAdult :: Iterate User
+onlyAdult x@(user, users)
+  | age user > 18
+    = Continue x
+  | otherwise
+    = Skip
+
+maxNumberMan :: Int -> Iterate User
+maxNumberMan count x@(user, users) =
+  if (isMale user) && (length $ filter isMale users) >= count
+  then Skip
+  else Continue x
+
+maxNumberOfRecords :: Int -> Iterate User
+maxNumberOfRecords count x@(_, users)
+  | length users == 3 = Stop
+  | otherwise = Continue x
+{% endhighlight %}
+
+Our iterate functions take a pair (user, users) and return either Continue|Skip|Stop order.
+Now is where the fun begins, let's make our Iterator a Monad instance.
+
+{% highlight haskell %}
+instance Monad Iterator where
+  return x = Continue x
+  Continue seed >>= f = f seed
+  Skip >>= _ = Skip
+  Stop >>= _ = Stop
+{% endhighlight %}
+
+We only need to define our main keep function as so:
+
+{% highlight haskell %}
+keep :: Iterate User -> Users -> Users -> Users
+keep iterate [] acc           = []
+keep iterate (user:users) acc =
+  case iterate (user, acc) of
+    Continue _ -> user : keep iterate users treatedUsers
+    Skip       -> keep iterate users treatedUsers
+    Stop       -> []
+  where
+    treatedUsers = user : acc
+{% endhighlight %}
+
+We can now combine our folding and filtering functions easily:
+
+{% highlight haskell %}
+putStrLn $ show $ keep (noWomen >=> onlyAdult >=> (maxNumberMan 3)) users [] -- ["Joe","Jack"]
+{% endhighlight %}
