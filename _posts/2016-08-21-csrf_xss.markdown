@@ -1,0 +1,70 @@
+---
+layout: post
+title:  "CSRF & XSS"
+date:   2016-08-21
+categories: security
+---
+
+# CSRF
+
+## Description
+
+>Cross-Site Request Forgery (CSRF) is an attack that forces an end user to execute unwanted actions on a web application in which they're currently authenticated. [OWASP](https://www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF))
+
+## Scenario
+
+Alice is logged onto her bank site bank.com
+Hacker (Bob) who wants to steal money from Alice.
+Bob send an email to Alice with a link <a href="bank.com/pay?recipient=bob&amount=1000">
+Alice click the link which send a the related request with her credential.
+
+## Caveats
+
+* It doesnt have to be a link, it can be an image 0x0px image
+* Also, it doesnt have to be a GET http request, bob can send a form to Alice which will be submitted through a POST request
+
+The goal of a CSRF attack is to trigger a change of state (ex: loss of money) which means that it will occur through a POST/PUT/PATCH/DELETE http request. GET request won't be usefull for Bob as only Alice will see the result of it.
+
+## Prevention
+
+* Checking the `Origin` Header is equal to bank.com will prevent this attack
+
+The issue is that the Origin Header is not automatically send. It is always send through CORS request otherwise it depends on the browser. Chrome seems to send it for every requests but GET.
+
+If the attacker's request is being sent through an ajax query, then single origin policy will prevent the request from reaching the server except if the server allows CORS and * as origin !
+
+* If the endpoint of the target server is an API, an easy solution is to simply check for the header `X-Requested-With: XMLHttpRequest`
+
+Indeed, many existing javascript library will automatically add this header when doing ajax requests. Attacker can't add it because CORS prevent additional headers from being set.
+
+# XSS
+
+## Description
+
+>Cross-Site Scripting (XSS) attacks are a type of injection, in which malicious scripts are injected into otherwise benign and trusted web sites. Flaws that allow these attacks to succeed occur anywhere a web application uses input from a user within the output it generates without validating or encoding it. An attacker can use XSS to send a malicious script to an unsuspecting user. The end user’s browser has no way to know that the script should not be trusted, and will execute the script. Because it thinks the script came from a trusted source, the malicious script can access any cookies, session tokens, or other sensitive information retained by the browser and used with that site. [OWASP](https://www.owasp.org/index.php/XSS)
+
+## Scenario
+
+- Alice is logged onto her bank site bank.com
+- Hacker (Bob) who wants to steal money from Alice.
+- Bob creates a profile on bank.com
+- Bob replace go into his account preferences and replace its name with a script
+`<div onload="sendMoney('bob', '$1000')"></div>`
+- Bob send an email to Alice telling her to account for whatever reason through:
+`<a href="bank.com/accounts/bob">Check your account!</a>`
+- Alice click the link which retrieve the sendMoney script which will send money to Bob on her behalf
+
+## Caveats
+
+* It doesnt have to be a link, it can be an image 0x0px image
+* Also, it doesnt have to be a GET http request, bob can send a form to Alice which will be submitted through a POST request
+
+The goal of a CSRF attack is to trigger a change of state (ex: loss of money) which means that it will occur through a POST/PUT/PATCH/DELETE http request. GET request won't be usefull for Bob as only Alice will see the result of it.
+
+## Prevention
+
+Preventing XSS attacks is not easy. [Preventions](https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet)
+
+* One tedious prevention method is to escape all added html.
+* For an API, setting the `Content-Type` header response will tell the browser to not execute the response:
+`Content-Type: application/json; charset=utf-8`
