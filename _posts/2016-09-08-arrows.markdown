@@ -1,0 +1,156 @@
+---
+layout: post
+title:  "Arrows"
+date:   2016-09-08
+categories: haskell
+---
+
+# Arrows
+
+---
+<br>
+
+> Arrow a b c represents a process that takes as input something of type b and outputs something of type c.
+
+**setup**
+{% highlight haskell %}
+{-# LANGUAGE Arrows #-}
+
+module MyModule (
+) where
+
+import Control.Arrow
+import Control.Category
+import Prelude hiding (id,(.))
+{% endhighlight %}
+
+So let's try to implement a Pipe structure.
+
+**Pipe Structure**
+{% highlight haskell %}
+newtype Pipe a b = Pipe { run :: a -> b }
+
+instance Arrow Pipe where
+  -- arr :: Arrow a => (b -> c) -> a b c
+  arr f = Pipe f
+
+  -- first and second can be seen as an output demultiplexer
+  -- first :: Arrow a => a b c -> a (b, d) (c, d)
+  first (Pipe f) =
+    -- whatever the input is, apply it to f and return a pair
+    -- with the result and the input not modified
+    Pipe (mapFirst f)
+    where
+      mapFirst g (a, b) = (g a, b)
+
+  -- second :: Arrow a => a b c -> a (d, b) (d, c)
+  second (Pipe f) =
+    Pipe (mapSnd f)
+    where
+      mapSnd g (a, b) = (a, g b)
+
+-- An arrow needs to be an instance of Category
+instance Category Pipe where
+    (Pipe g) . (Pipe f) = Pipe (g . f)
+    id = arr id
+{% endhighlight %}
+
+**Already implemented methods**
+{% highlight haskell %}
+{-
+(***) combines two arrows into a new arrow by running the two
+arrows on a pair of values (one arrow on the first item and one
+arrow on the second item).
+-}
+(***) :: Arrow a => a b c -> a b' c' -> a (b, b') (c, c')
+f *** g = first f >>> second g
+
+
+-- (&&&) is similar to (***) but it splits the input so we don't
+-- have do it
+(&&&) :: Arrow a => a b c -> a b c' -> a b (c, c')
+f &&& g = split >>> (f *** g)
+
+-- finally, the (>>>) operator allows to combine two arrows
+-- like (.) would do for functions
+(>>>) :: Category cat => cat a b -> cat b c -> cat a c
+f >>> g = g . f
+{% endhighlight %}
+
+**Usefull common methods**
+{% highlight haskell %}
+-- if we are going to deal with arrows with multiple output,
+split will become handy to create an output demultiplexer
+split :: (Arrow a) => a b (b, b)
+split = arr (\x -> (x, x))
+
+-- join an 2 outputs through the given operator
+unsplit :: (Arrow a) => (b -> c -> d) -> a (b, c) d
+unsplit = arr . uncurry
+--        arr (\operator (x,y) -> x `operator` y)
+
+-- Ease the creation of 2 arrows for which we will apply the
+-- same argument and finally merge the result with the given operator
+liftA2 :: (Arrow a) => (b -> c -> d) -> a e b -> a e c -> a e d
+liftA2 op f g = split >>> first f >>> second g >>> unsplit op
+{% endhighlight %}
+
+So let's see how we can use arrows with our Pipe type. First we'll define some simple Pipes.
+**Example**
+{% highlight haskell %}
+plus10, plus5, minus1, minus2 :: Pipe Int Int
+plus10 = arr $ (+) 10
+plus5  = arr $ (+) 5
+minus1 = arr $ \x -> x - 1
+minus2 = arr $ \x -> x - 2
+{% endhighlight %}
+
+Now we want to run all the plusX functions together on given value and the same with our minusX functions, then sum the results
+{% highlight haskell %}
+-- first lets combine our plus and minus functions
+minus, plus :: Pipe Int Int
+minus = minus1 >>> minus2
+plus = plus10 >>> plus5
+
+-- then let's create our flow by splitting the input into a
+-- pair, running that pair through our minus and plus and finally
+-- summing the result
+flow = split >>> first plus >>> second minus >>> unsplit (+)
+
+main = putStrLn $ show $ run flow 1 -- 14
+-- the easiest way for me to understand this is through boxes
+
+{-
+                        1 +-----+ 0 +-----+ -2
+                       +->| -1  +-->| -2  +--+
+initial value          |  +-----+   +-----+  |
+   +-----+    +-----+  |                     |   +-----+
+   |  1  +--->|(1,1)+--+                     +-->| (+) +--> 14
+   +-----+    +-----+  |                     |   +-----+
+                       |  +-----+   +-----+  |
+                       +->| +10 +-->| +5  +--+
+                        1 +-----+ 11+-----+ 16
+
+-}
+
+-- note that we could have simplified the flow construction
+-- through our `liftA2` function:
+flow' = liftA2 (+) plus minus
+{% endhighlight %}
+
+{% highlight haskell %}
+{% endhighlight %}
+{% highlight haskell %}
+{% endhighlight %}
+{% highlight haskell %}
+{% endhighlight %}
+{% highlight haskell %}
+{% endhighlight %}
+{% highlight haskell %}
+{% endhighlight %}
+{% highlight haskell %}
+{% endhighlight %}
+{% highlight haskell %}
+{% endhighlight %}
+---
+<br>
