@@ -123,10 +123,10 @@ main = putStrLn $ show $ run flow 1 -- 14
 {-
                         1 +-----+ 0 +-----+ -2
                        +->| -1  +-->| -2  +--+
-initial value          |  +-----+   +-----+  |
-   +-----+    +-----+  |                     |   +-----+
-   |  1  +--->|(1,1)+--+                     +-->| (+) +--> 14
-   +-----+    +-----+  |                     |   +-----+
+                       |  +-----+   +-----+  |
+        1 +-----+(1,1) |                     |   +-----------+
+       -->|split|+-----+                     +-->|unsplit(+) +-> 14
+          +-----+      |                     |   +-----------+
                        |  +-----+   +-----+  |
                        +->| +10 +-->| +5  +--+
                         1 +-----+ 11+-----+ 16
@@ -138,8 +138,44 @@ initial value          |  +-----+   +-----+  |
 flow' = liftA2 (+) plus minus
 {% endhighlight %}
 
+**Do notation**
+
+As for monads, arrows can use their do notations which can helps readability.
+If we want to apply an *X* and *Y* value to `plus5` and `plus10` and sum their results, we would have to write something like:
+
 {% highlight haskell %}
+plusplus, plusplus' :: Int -> Int -> Pipe Int Int
+
+plusplus x y =
+  arr $ \z -> a + b + z
+  where
+    a = run plus5 x
+    b = run plus10 y
+
+plusplus' x y = proc z -> do
+  x' <- plus5 -< x
+  y' <- plus10 -< y
+  returnA -< x' + y' + z
+
+res1 = run (plusplus  1 2) 3 -- 21
+res2 = run (plusplus' 1 2) 3 -- 21
+
+{-
+(<-) works as an unwrapping assigment like monad do notation
+eg: (a :: Int) <- (x :: IO Int)
+
+(-<) works as the run function, eg: (plus5 -< x) <=> run plus5 x
+
+finally returnA wrap the result into the Pipe arrow
+-}
+
+-- The proc params need to match the Arrow input and
+-- returnA values need to match Pipe output
+someArrow :: Pipe (Int, String) (String, String)
+someArrow = proc (someInt, someString) -> do
+  returnA -< ("hello", "world")
 {% endhighlight %}
+
 {% highlight haskell %}
 {% endhighlight %}
 {% highlight haskell %}
