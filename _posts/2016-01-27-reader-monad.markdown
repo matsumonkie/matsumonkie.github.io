@@ -37,14 +37,17 @@ let f = (+)
 let g = (h >>= f) 3 -- ((*4) >>= (+)) 3 = 15
 -- g w = f (h w) w = (w * 4) + w
 
--- So why is this interesting ? well see how the parameter w is passed for each functions, If you are in the context of a Monad then you can pass the environment later on without specifying the argument again and again
+-- So why is this interesting ? well see how the parameter w is passed for each
+-- functions. If you are in the context of a Monad then you can pass the
+-- environment later on without specifying the argument again and again
 -- for example, look the function below
 multiplyAndAdd3 :: Int -> Int
 multiplyAndAdd3 x = let
   a = x * 4
   b = x + 5
   in a + b
-  -- here we have to specify x in each functions, it doesnt seem bad but if you have a lot of operations then you might want to pass x implicitely
+  -- here we have to specify x in each functions, it doesnt seem bad but if
+  -- you have a lot of operations then you might want to pass x implicitely
 
 -- like this for example
 multiplyAndAdd :: Int -> Int
@@ -54,7 +57,7 @@ multiplyAndAdd =
   (+5) >>= \b ->
   return (a + b)
 
--- and we can also use the do notation
+-- with the `do notation`
 multiplyAndAdd :: Int -> Int
 multiplyAndAdd = do
   a <- (*4)
