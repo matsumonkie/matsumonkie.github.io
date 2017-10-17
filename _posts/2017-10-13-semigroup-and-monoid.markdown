@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Semigroup & Monoid"
-date:   2017-13-10
+date:   2017-10-13
 categories: haskell
 ---
 
